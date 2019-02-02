@@ -4,20 +4,18 @@ import org.tupol.demo.streaming.states._
 import org.tupol.stats.StatsOps._
 import org.tupol.stats._
 
-
 package object demo_01 {
 
   case class DataRecord(value: Double)
 
-  case class DataState(previousRecord: Option[DataRecord], valueStats: Stats[Double]) extends
-    StateUpdater[DataState, DataRecord]{
+  case class DataState(previousRecord: Option[DataRecord], stats: Stats[Double]) extends StateUpdater[DataState, DataRecord] {
     override def update(record: DataRecord): DataState =
-      DataState(Some(record), valueStats |+| record.value)
+      DataState(Some(record), stats |+| record.value)
     override def update(records: Iterable[DataRecord]): DataState =
       records.foldLeft(this)((result, record) => result |+| record)
     def probability3S(x: Double, sigmaIncrements: Int = 30) = {
-      if((valueStats.stdev() == 0 && x == valueStats.mean) || valueStats.count < 2) 1.0
-      else valueStats.probabilityNSigma(x, valueStats.stdev()/sigmaIncrements, 3)
+      if ((stats.stdev() == 0 && x == stats.mean) || stats.count < 2) 1.0
+      else stats.probabilityNSigma(x, stats.stdev() / sigmaIncrements, 3)
     }
   }
 

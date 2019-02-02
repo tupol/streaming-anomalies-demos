@@ -1,18 +1,19 @@
 package org.tupol.demo.streaming.anomalies.demos
 
 import org.tupol.demo.streaming.states._
+import org.tupol.stats.StatsOps._
 import org.tupol.stats.EWeightedStatsOps._
 import org.tupol.stats._
 
-package object demo_02 {
+package object demo_03 {
 
   val Alpha = 0.3 // this determines how "aggressive" should the stats react to changes; the larger the more aggressive
 
   case class DataRecord(value: Double)
 
-  case class DataState(previousRecord: Option[DataRecord], ewStats: EWeightedStats[Double]) extends StateUpdater[DataState, DataRecord] {
+  case class DataState(previousRecord: Option[DataRecord], stats: Stats[Double], ewStats: EWeightedStats[Double]) extends StateUpdater[DataState, DataRecord] {
     override def update(record: DataRecord): DataState =
-      DataState(Some(record), ewStats |+| record.value)
+      DataState(Some(record), stats |+| record.value, ewStats |+| record.value)
     override def update(records: Iterable[DataRecord]): DataState =
       records.foldLeft(this)((result, record) => result |+| record)
     def probability3S(x: Double, sigmaIncrements: Int = 10) = {
@@ -22,6 +23,12 @@ package object demo_02 {
   }
 
   def InitialState(record: DataRecord): DataState =
-    DataState(None, DoubleEWeightedStats.zeroDouble(Alpha, record.value))
+    DataState(None, DoubleStats.zeroDouble(record.value), DoubleEWeightedStats.zeroDouble(Alpha, record.value))
 
+  def printLine = println("+-------+------------+------------+------------+------------+------------+------------+")
+  def printHeader = {
+    printLine
+    println("| Anom? | Prob norm  |   Value    |  EW Mean   |  EW St Dev |    Mean    |   St Dev   |")
+    printLine
+  }
 }
