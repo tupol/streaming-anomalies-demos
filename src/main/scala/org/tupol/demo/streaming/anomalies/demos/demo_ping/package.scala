@@ -4,7 +4,7 @@ import java.sql.Timestamp
 
 import org.tupol.demo.streaming.anomalies.demos.time.parseDateTime
 import org.tupol.demo.streaming.states.StateUpdater
-import org.tupol.stats.{ EWeightedStats, Stats }
+import org.tupol.stats.Stats
 
 import scala.util.Try
 
@@ -34,38 +34,32 @@ package object demo_ping {
     }
   }
 
-  case class PingDataState(record: PingData, stats: Stats, ewStats: EWeightedStats) extends StateUpdater[PingDataState, PingData] {
+  case class PingDataState(record: PingData, stats: Stats) extends StateUpdater[PingDataState, PingData] {
     override def update(record: PingData): PingDataState =
-      PingDataState(record, stats |+| record.time, ewStats |+| record.time)
+      PingDataState(record, stats |+| record.time)
     override def update(records: Iterable[PingData]): PingDataState =
       records.foldLeft(this)((result, record) => result |+| record)
-    def ewProbability3S(x: Double, sigmaIncrements: Int = 10) = {
-      val epsilon = if (ewStats.stdev() == 0) 1E-12 else ewStats.stdev() / sigmaIncrements
-      ewStats.probabilityNSigma(x, epsilon, 3)
-    }
-    def probability3S(x: Double, sigmaIncrements: Int = 10) = {
+    def probability3S(x: Double, sigmaIncrements: Int = 10) =
       stats.probabilityNSigma(x, 10, 3)
-    }
   }
+
   def InitialState(record: PingData): PingDataState =
-    PingDataState(record, Stats.zeroDouble(record.time), EWeightedStats.zeroDouble(Alpha, record.time))
+    PingDataState(record, Stats.zeroDouble(record.time))
 
   case class StringKafkaMessage(key: String, value: String, topic: String, partition: Int, offset: Long,
     timestamp: Long, timestampType: Int)
 
-  def isAnomaly(record: PingData, state: PingDataState, threshold: Double = 0.8): Boolean = {
+  def isAnomaly(record: PingData, state: PingDataState, threshold: Double = 0.6): Boolean = {
     require(threshold > 0 && threshold < 1, "The threshold should be between 0 and 1 exclusive.")
-    state.probability3S(record.time) <= threshold && record.time > state.ewStats.avg
+    state.probability3S(record.time) <= threshold && record.time > state.stats.avg
   }
 
   case class PingDataOut(anomaly: Boolean, ping: PingData, sourceStats: PingStats, targetStats: PingStats)
-  case class PingStats(probability: Double, ewProbability: Double, stats: Stats, ewStats: EWeightedStats)
+  case class PingStats(probability: Double, stats: Stats)
   object PingStats {
     def apply(state: PingDataState): PingStats = PingStats(
-      state.stats.probabilityNSigma(state.record.time, 10, 6),
-      state.ewProbability3S(state.record.time),
-      state.stats,
-      state.ewStats)
+      state.probability3S(state.record.time),
+      state.stats)
   }
 
 }

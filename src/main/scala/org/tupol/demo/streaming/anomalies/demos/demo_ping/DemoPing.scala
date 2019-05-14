@@ -4,7 +4,7 @@ import org.apache.spark.sql.streaming.{ GroupState, GroupStateTimeout, OutputMod
 import org.apache.spark.sql.{ Dataset, SparkSession }
 import org.tupol.spark.SparkFun
 import org.tupol.spark.implicits._
-import org.tupol.spark.io.streaming.structured.{ FormatAwareStreamingSinkConfiguration, KafkaStreamDataSinkConfiguration, KafkaStreamDataSourceConfiguration }
+import org.tupol.spark.io.streaming.structured._
 import org.tupol.utils.config.Configurator
 
 import scala.util.Try
@@ -40,9 +40,8 @@ object DemoPing extends SparkFun[DemoPingContext, Unit](DemoPingContext(_).get) 
       .joinWith(statsByTarget, statsBySource("_1") === statsByTarget("_1"))
       .map {
         case ((_, sStats), (pd, tStats)) => PingDataOut(
-          isAnomaly(pd, tStats, 0.01), pd, PingStats(sStats), PingStats(tStats))
+          isAnomaly(pd, tStats) || isAnomaly(pd, sStats), pd, PingStats(sStats), PingStats(tStats))
       }
-    //        .map { case ((_, sStats), (pd, tStats)) => formattedResult(pd, sStats, tStats) }
 
     val outputStream = context.output match {
       case _: KafkaStreamDataSinkConfiguration => joinedSteams.toJSON.toDF("value")
@@ -51,13 +50,6 @@ object DemoPing extends SparkFun[DemoPingContext, Unit](DemoPingContext(_).get) 
 
     outputStream.streamingSink(context.output).write
   }
-
-  def formattedResult(record: PingData, sourceState: PingDataState, targetState: PingDataState) =
-    f"| ${isAnomaly(record, targetState)}%5s | ${record.sourceId}%15s | ${formattedStats(record, sourceState)} | ${record.targetName}%15s| ${record.icmpSeq}%3d | ${record.time}%8.3f | ${formattedStats(record, targetState)} |"
-
-  def formattedStats(record: PingData, state: PingDataState) =
-    f"${state.ewProbability3S(record.time)}%8.6f | ${state.ewStats.mean}%10.3f | ${state.ewStats.stdev()}%10.3f " +
-      f"| ${state.stats.probabilityNSigma(record.time, 10, 2)}%8.6f | ${state.stats.mean}%10.3f | ${state.stats.stdev()}%10.3f"
 
   def stateUpdaterByRecord(key: String, values: Iterator[PingData], state: GroupState[PingDataState]): Iterator[(PingData, PingDataState)] = {
     values.toSeq.sortBy(_.timestamp.getNanos) match {
