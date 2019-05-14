@@ -7,7 +7,6 @@ object DemoApp extends App {
   def isAnomaly(record: DataRecord, dataState: DataState, confidence: Double = 0.99): Boolean =
     dataState.probability3S(record.value) <= 1.0 - confidence
 
-
   println("Training Data")
   printHeader
   val trainingDataStream: Seq[DataRecord] = Stream.range(0, 100, 1).map(x => DataRecord(10 * math.sin(x * math.Pi / 100) + 2 * (0.5 - math.random)))

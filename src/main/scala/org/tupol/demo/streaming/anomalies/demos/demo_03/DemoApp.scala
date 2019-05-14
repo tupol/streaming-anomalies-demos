@@ -5,8 +5,8 @@ object DemoApp extends App {
   def isAnomaly(record: DataRecord, dataState: DataState, confidence: Double = 0.99): Boolean =
     dataState.probability3S(record.value) <= 1.0 - confidence
 
-  def signalFunction(x: Double) = if(x % 100 < 35) 0.0 else if(x % 100 >= 35 && x % 100 < 70) 10.0 else 0.0
-  def smallNoiseFunction(x: Double) = 2 * ( 0.5 - math.random )
+  def signalFunction(x: Double) = if (x % 100 < 35) 0.0 else if (x % 100 >= 35 && x % 100 < 70) 10.0 else 0.0
+  def smallNoiseFunction(x: Double) = 2 * (0.5 - math.random)
   def trainingValueFunction(x: Double) = signalFunction(x) + smallNoiseFunction(x)
   def largeNoiseFunction(x: Double) = 2 * smallNoiseFunction(x)
   def runtimeValueFunction(x: Double) = signalFunction(x) + largeNoiseFunction(x)

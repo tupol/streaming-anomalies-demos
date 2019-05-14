@@ -1,7 +1,6 @@
 package org.tupol.demo.streaming.anomalies.demos
 
 import org.tupol.demo.streaming.states._
-import org.tupol.stats.EWeightedStatsOps._
 import org.tupol.stats._
 
 package object demo_02 {
@@ -10,7 +9,7 @@ package object demo_02 {
 
   case class DataRecord(value: Double)
 
-  case class DataState(previousRecord: Option[DataRecord], ewStats: EWeightedStats[Double]) extends StateUpdater[DataState, DataRecord] {
+  case class DataState(previousRecord: Option[DataRecord], ewStats: EWeightedStats) extends StateUpdater[DataState, DataRecord] {
     override def update(record: DataRecord): DataState =
       DataState(Some(record), ewStats |+| record.value)
     override def update(records: Iterable[DataRecord]): DataState =
@@ -22,6 +21,6 @@ package object demo_02 {
   }
 
   def InitialState(record: DataRecord): DataState =
-    DataState(None, DoubleEWeightedStats.zeroDouble(Alpha, record.value))
+    DataState(None, EWeightedStats.zeroDouble(Alpha, record.value))
 
 }
